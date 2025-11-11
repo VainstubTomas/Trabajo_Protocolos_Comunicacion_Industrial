@@ -1,0 +1,148 @@
+<div class="card">
+    <h1 class="display-1">Panel de control industrial</h1>
+
+    <section>
+        <h2 class="display-2">Input controls - LED</h2>
+        
+        <div id="inputsForControl">
+    
+            {{!-- analog ctrl --}}
+            <form id="analogControl" class="d-flex gap-2 mb-3"> 
+                <input class="form-control" type="text" id="analogValue" placeholder="Input a new analog value [0 - 100]" required>
+                <button class="btn btn-dark" type="submit">Send</button>
+            </form>
+            
+            {{!-- digital ctrl --}}
+            <button id="digitalControl" class="btn btn-danger" type="submit">OFF</button>
+            
+        </div>
+
+    </section>
+
+    <section id="displayInputAndOutputs">
+        <h2 class="display-2">Display I/O values from device Nº1</h2>
+
+        <div class="io-data">
+            <p>Temperature: <span id="currentTemperature">--</span> °C</p>
+        </div>
+        <div class="io-data">
+            <p>Distance: <span id="currentDistance">--</span> %</p>
+        </div>
+    </section>
+
+    <section id="communicationsStatus">
+        <h2 class="display-2">Communications states</h2>
+        <div id="modbusStatus">
+            <p>Modbus state: <span id="modbusState" style="color: rgb(185, 185, 0);">DEVICE NOT REACHED</span></p>
+        </div>
+        <div id="opcStatus">
+            <p>OPC state: <span id="opcState" style="color: red";>ERROR</span></p>
+        </div>
+        <div id="mqttStatus">
+            <p>MQTT state: <span id="mqttState">CONNECTED</span></p>
+        </div>
+    </section>
+{{!-- 
+    <section id="failsControl">
+        <h2 class="display-2">System failures</h2>
+    </section> --}}
+</div>
+
+{{!-- websocket connection --}}
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+    //client/server connection
+    const socket = io();
+
+    //DOM
+    const temp = document.getElementById("currentTemperature");
+    const dist = document.getElementById("currentDistance");
+    const mqttStateSpan = document.getElementById('mqttState');
+    const modbusStateSpan = document.getElementById('modbusState');
+    const opctateSpan = document.getElementById('opcState');
+    //protocols states messages
+
+    // Depuration listener
+    socket.on('connect', () => {
+        console.log(`[CLIENT] Connection complete with the server: ${socket.id}`);
+        // Actualiza el estado de la capa MQTT para indicar que Socket.io está bien
+        //mqttMsg.textContent = 'Connected to Express/Socket.io. Waiting data from the Broker...';
+    });
+
+    socket.on('disconnect', () => {
+        console.log('[CLIENT] Connection lost with the server.');
+        //mqttMsg.textContent = 'ERROR: Lost connection with Express/Socket.io .';
+    });
+
+    //lectura del estado mqtt
+    socket.on('connect', () => {
+        // Cuando el cliente se conecta a Express, asumimos que está listo
+        mqttStateSpan.textContent = 'CONNECTED';
+        mqttStateSpan.style.color = 'green';
+    });
+
+    socket.on('disconnect', () => {
+        // Si la conexión con Express se cae, el estado es DISCONNECTED
+        mqttStateSpan.textContent = 'DISCONNECTED (Server Down (Express))';
+        mqttStateSpan.style.color = 'red';
+    });
+
+    // Este evento viene de mqttClient.js cuando client.on('error') se dispara
+    socket.on('system_fault', (data) => {
+        console.error(`[SYSTEM FAULT] Origen: ${data.source}.`);
+        
+        // El error más común es la pérdida de conexión con el broker
+        if (data.source === 'MQTT_BROKER') {
+            mqttStateSpan.textContent = 'DISCONNECTED (Broker Offline)';
+            mqttStateSpan.style.color = 'red';
+        }
+        
+        // Opcional: Notificar en la sección general de fallas (si existe)
+        // document.getElementById('systemFaultMessage').textContent = data.message;
+    });
+
+    // Data reception from broker
+    // Listen 'mqtt_update' event from mqttClient.js
+    socket.on('mqtt_update', (data) => {
+        console.log('[CLIENT] New information receipt:', data);
+        
+        const { topic, payload } = data;
+
+        // upload HTML elements
+        switch (topic) {
+            case 'pci/sensor/temp':
+                temp.textContent = payload;
+                break;
+            case 'pci/sensor/distancia':
+                dist.textContent = payload;
+                break;
+            case 'pci/state/modbus':
+                modbusStateSpan.textContent = payload;
+                if (payload == 'DONE') {
+                    modbusStateSpan.style.color = 'green'; 
+                } else if (payload == 'DEVICE NOT REACHED'){
+                    modbusStateSpan.style.color = 'yellow';
+                } else {
+                    modbusStateSpan.style.color = 'red';
+                }
+                break;
+            case 'pci/state/opc':
+                opctateSpan.textContent = payload;
+                if (payload === 'ERROR') {
+                    opcStateSpan.style.color = 'red'; 
+                } else {
+                    opcStateSpan.style.color = 'green';
+                }
+                break;
+            case 'pci/value1/analog':
+                NombreDOM_Referencia.textContent = payload;
+                break;
+            case 'pci/value1/dig':
+                NombreDOM_Referencia.textContent = payload;
+                break;
+            default:
+                console.log(`[CLIENT] Tópico recibido no mapeado: ${topic}`);
+        }
+    });
+</script>

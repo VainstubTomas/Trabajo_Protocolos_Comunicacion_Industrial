@@ -1,0 +1,16 @@
+.card{
+    max-width: 600px;
+}
+
+.display-1{
+    font-size: 50px;
+    font-weight:400
+}
+
+.display-2{
+    font-size: 40px;
+}
+
+.form-control{
+    max-width: 300px;
+}

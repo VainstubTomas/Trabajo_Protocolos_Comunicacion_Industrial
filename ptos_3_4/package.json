@@ -1,0 +1,21 @@
+{
+  "name": "ptos_3_4",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon ./src/app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0",
+    "express-handlebars": "^8.0.3",
+    "mqtt": "^5.14.1",
+    "socket.io": "^4.8.1",
+    "ts-node": "^10.9.2"
+  }
+}
