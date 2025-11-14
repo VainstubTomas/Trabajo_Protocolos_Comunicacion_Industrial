@@ -1,35 +1,40 @@
-#include<WiFi.h>
-#include<PubSubClient.h>
-#include<Wire.h>
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <Wire.h>
 #include <DHT.h>
 #include <WiFiClientSecure.h>
+
 WiFiClientSecure espClient;
 
-//def y config DHT11
-#define DHTPIN 23       
-#define DHTTYPE DHT11   
+// def y config DHT11
+#define DHTPIN 23
+#define DHTTYPE DHT11
 DHT dht(DHTPIN, DHTTYPE);
-//def LEDs
+
+// def LEDs
 #define LED_ROJO 22
 #define LED_VERDE 21
+#define LED_AMARILLO 18
 
 PubSubClient client(espClient);
-long lastMsg=0;
+long lastMsg = 0;
 char msg[50];
-int value=0;
+int value = 0;
 
-float Temperatura=0;
-float Humedad=0;
+float Temperatura = 0;
+float Humedad = 0;
 
-//config internet
-const char* ssid="TP-Link_6D76";
-const char*password="55500722";
-//config mqtt
-//dir mqtt broker ip adreess
-const char* mqtt_server="j72b9212.ala.us-east-1.emqxsl.com";
+// config internet
+const char* ssid = "TP-Link_6D76";
+const char* password = "55500722";
+
+// config mqtt
+// dir mqtt broker ip adreess
+const char* mqtt_server = "j72b9212.ala.us-east-1.emqxsl.com";
 const char* mqtt_user = "user";        // Tu Username
 const char* mqtt_password = "FinalPCI123"; // Tu Password
-//certificado broker
+
+// certificado broker
 const char* EMQX_CA_CERT = R"EOF(
 -----BEGIN CERTIFICATE-----
 MIIDjjCCAnagAwIBAgIQAzrx5qcRqaC7KGSxHQn65TANBgkqhkiG9w0BAQsFADBh
@@ -59,16 +64,20 @@ void setup() {
   Serial.begin(115200);
   setup_wifi();
   espClient.setCACert(EMQX_CA_CERT);
-  client.setServer(mqtt_server,8883);
+  client.setServer(mqtt_server, 8883);
   client.setCallback(callback);
   //dht11
   dht.begin();
-  //leds
+  
+  //leds (Pines digitales para Rojo y Verde)
   pinMode(LED_ROJO, OUTPUT);
   pinMode(LED_VERDE, OUTPUT);
-    // Estado inicial leds
-  digitalWrite(LED_ROJO, HIGH);   
-  digitalWrite(LED_VERDE, LOW);   
+  pinMode(LED_AMARILLO, OUTPUT);
+  
+  // Estado inicial leds
+  digitalWrite(LED_ROJO, HIGH);// Rojo encendido por default (indicando no conectado)
+  digitalWrite(LED_VERDE, LOW);// Verde apagado
+  digitalWrite(LED_VERDE, LOW);// Amarillo apagado
 }
 
 void setup_wifi(){
@@ -76,34 +85,58 @@ void setup_wifi(){
   Serial.println();
   Serial.print("conectado a");
   Serial.println(ssid);
-  WiFi.begin(ssid,password);
-  while(WiFi.status()!=WL_CONNECTED){
+  WiFi.begin(ssid, password);
+  while(WiFi.status() != WL_CONNECTED){
     delay(500);
     Serial.print(".");
     }
-   Serial.println("");
-   Serial.println("WiFi conectado");
-   Serial.println("IP ADRESS:");
-   Serial.println(WiFi.localIP());
+    Serial.println("");
+    Serial.println("WiFi conectado");
+    Serial.println("IP ADRESS:");
+    Serial.println(WiFi.localIP());
 }
 
 //realiza conexiòn mqtt (suscriptor empieza a recibir datos)
 void callback(char* topic, byte* message, unsigned int length){
-  Serial.print ("Mensaje recibido en topic: ");
-  Serial.print (topic); 
-  Serial.print (", message: "); 
+    
+  // Impresión de mensaje recibido
+  Serial.print("Mensaje recibido en topic: ");
+  Serial.print(topic);
+  Serial.print(", message: ");
+  
   String messageTemp;
-  for (int i = 0; i<length; i++ ){
-    Serial.print ((char)message[i]);
-    messageTemp+=(char)message[i];
+  for (int i = 0; i < length; i++ ){
+    Serial.print((char)message[i]);
+    messageTemp += (char)message[i];
    }
-  Serial.println(); 
-  //si necesitamos que nuestro publicador (ESP) tambien reciba datos
-  //Primer output temperatura - topic: esp32/output/temperatura
-  //Segundo output temperatura - topic: esp32/output/humedad
-  }
+  Serial.println();
+  
+  // ------------------------------------------
+  // LÓGICA DE CONTROL: Tópicos de Suscripción
+  // ------------------------------------------
 
- // realiza la reconexiòn en caso de fallo
+  // 1. Verificar si el tópico recibido es el de control DIGITAL
+  if (String(topic) == "pci/value1/dig") {
+    Serial.print("Comando de LED digital recibido: ");
+    Serial.println(messageTemp);
+    
+    // Comprobar si el mensaje es '1' (Encender)
+    if (messageTemp == "1") {
+      digitalWrite(LED_AMARILLO, HIGH); // <--- ¡INCORRECTO! USAR LEDC
+      Serial.println("-> LED AMARILLO ENCENDIDO");
+    } 
+    // Comprobar si el mensaje es '0' (Apagar)
+    else if (messageTemp == "0") {
+      digitalWrite(LED_AMARILLO, LOW); // <--- ¡INCORRECTO! USAR LEDC
+      Serial.println("-> LED AMARILLO APAGADO");
+    }
+    else {
+      Serial.println("-> Valor no válido recibido para el control digital.");
+    }
+  } 
+}
+
+// realiza la reconexiòn en caso de fallo
 void reconnect (){
   while (!client.connected()){
     Serial.print("intentando conexiòn MQTT");
@@ -112,11 +145,12 @@ void reconnect (){
       Serial.println("conectado");
 
       // Cambiar LEDs
-      digitalWrite(LED_ROJO, LOW); 
-      digitalWrite(LED_VERDE, HIGH); 
+      digitalWrite(LED_ROJO, LOW);  
+      digitalWrite(LED_VERDE, HIGH);  
       
-      client.subscribe ("esp32/output/temperatura");
-      client.subscribe ("esp32/output/humedad");
+      client.subscribe ("pci/sensor/temp");
+      client.subscribe("pci/value1/dig");
+      client.subscribe("pci/value1/analog");
       } else {
         Serial.print ("fallo, rc=");
         Serial.print (client.state());
@@ -124,7 +158,7 @@ void reconnect (){
 
         //mantenemos estado o retornamos a los leds
         digitalWrite(LED_ROJO, HIGH);  
-        digitalWrite(LED_VERDE, LOW);   
+        digitalWrite(LED_VERDE, LOW);    
         
         delay (5000);
         }
@@ -139,34 +173,34 @@ void loop() {
     }
   client.loop();
   long now = millis ();
-  if (now-lastMsg>1000){ //tiempo de muestreo 100 ms 
+  if (now-lastMsg>1000){ //tiempo de muestreo 1000 ms (1 segundo)
     lastMsg=now;
     
-     // Leer temperatura y humedad desde el DHT11
+      // Leer temperatura y humedad desde el DHT11
     float Temperatura = dht.readTemperature();
-    float Humedad = dht.readHumidity();
+    //float Humedad = dht.readHumidity();
     
-     // Verificar si la lectura es válida
+      // Verificar si la lectura es válida
     if (isnan(Temperatura)|| isnan(Humedad)) {
       Serial.println("Error al leer del DHT11!");
       return;
     }
 
-     // Mostrar en el monitor serial
+      // Mostrar en el monitor serial
     Serial.print("Temperatura: ");
     Serial.print(Temperatura);
-    Serial.print(" °C  |  Humedad: ");
-    Serial.print(Humedad);
-    Serial.println(" %");
+    Serial.print(" °C");
+    //Serial.print(Humedad);
+    //Serial.println(" %");
 
     //publicamos temperatura
     char tempString[8];
     dtostrf(Temperatura, 1, 2, tempString);
-    client.publish("esp32/temperatura", tempString);
+    client.publish("pci/sensor/temp", tempString);
     
     // Publicar humedad
-    char humString[8];
-    dtostrf(Humedad, 1, 2, humString);
-    client.publish("esp32/humedad", humString);
+    //char humString[8];
+    //dtostrf(Humedad, 1, 2, humString);
+    //client.publish("esp32/humedad", humString);
   }
 }

@@ -13,7 +13,7 @@
             </form>
             
             {{!-- digital ctrl --}}
-            <button id="digitalControl" class="btn btn-danger" type="submit">OFF</button>
+            <button id="digitalControl" class="btn btn-danger" data-state="0" type="button">OFF</button>
             
         </div>
 
@@ -26,7 +26,7 @@
             <p>Temperature: <span id="currentTemperature">--</span> °C</p>
         </div>
         <div class="io-data">
-            <p>Distance: <span id="currentDistance">--</span> %</p>
+            <p>Distance: <span id="currentDistance">--</span> cm</p>
         </div>
     </section>
 
@@ -61,7 +61,10 @@
     const mqttStateSpan = document.getElementById('mqttState');
     const modbusStateSpan = document.getElementById('modbusState');
     const opctateSpan = document.getElementById('opcState');
-    //protocols states messages
+    //publicadores al broker
+    const digitalButton = document.getElementById('digitalControl');
+    const analogForm = document.getElementById('analogControl');
+    const analogInput = document.getElementById('analogValue');
 
     // Depuration listener
     socket.on('connect', () => {
@@ -145,4 +148,83 @@
                 console.log(`[CLIENT] Tópico recibido no mapeado: ${topic}`);
         }
     });
+
+    //envio de informacion al broker
+    //digitales
+    digitalButton.addEventListener('click', async (e) => {
+    e.preventDefault(); 
+    
+    //Leer el estado actual del botón (0 o 1)
+    const currentState = digitalButton.getAttribute('data-state');
+    
+    //Determinar el nuevo estado
+    const newState = (currentState === '0' || currentState === 'OFF') ? '1' : '0';
+
+    try {
+        //Enviar el nuevo estado (1 o 0) al endpoint POST
+        const response = await fetch('/command/digital', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ state: newState }) 
+        });
+
+        if (response.ok) {
+            console.log(`Comando digital enviado: ${newState}`);
+            
+            //ACTUALIZAR EL ESTADO VISUAL Y DATA DEL BOTÓN
+            if (newState === '1') {
+                digitalButton.textContent = 'ON';
+                digitalButton.classList.remove('btn-danger'); // Rojo
+                digitalButton.classList.add('btn-success'); // Verde
+                digitalButton.setAttribute('data-state', '1');
+            } else {
+                digitalButton.textContent = 'OFF';
+                digitalButton.classList.remove('btn-success'); // Verde
+                digitalButton.classList.add('btn-danger'); // Rojo
+                digitalButton.setAttribute('data-state', '0');
+            }
+        } else {
+            const errorData = await response.json();
+            console.error("Error del servidor:", errorData.message);
+        }
+
+    } catch (error) {
+        console.error('Fallo de conexión o de red:', error);
+    }
+
+    //analogicos
+    analogForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const valueToSend = analogInput.value;
+
+        try {
+            const response = await fetch('/command/analog', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                // El valor debe ser enviado como un string/JSON
+                body: JSON.stringify({ value: valueToSend }) 
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                console.log(`Comando analógico enviado: ${valueToSend}. Servidor responde:`, data.message);
+                // Opcional: Mostrar un mensaje de éxito en la vista
+            } else {
+                console.error('Error del servidor:', data.message);
+                alert(`Error al enviar comando analógico: ${data.message}`);
+            }
+
+        } catch (error) {
+            console.error('Fallo en la conexión o en la red:', error);
+            alert('Fallo de conexión al servidor.');
+        }
+        
+        // Limpiar o restablecer el valor después del envío
+        analogInput.value = '';
+    });
+});
 </script>

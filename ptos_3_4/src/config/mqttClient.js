@@ -15,6 +15,8 @@ let client = null;
 //topics
 //wildcard '#' porque todos los topicos comienzan con pci/
 const TOPIC_STATUS_BASE = 'pci/#';
+const TOPIC_CMD_ANALOG = 'pci/value1/analog'; // Luminosidad (0-255)
+const TOPIC_CMD_DIGITAL = 'pci/value1/dig';   //ON / OFF
 
 /**
  * socket.io objeto from app.js to listen events in live
@@ -77,8 +79,45 @@ function init(io) {
     });
 }
 
+/**
+ * Publica un comando de control en el tópico MQTT.
+ * @param {string} type - 'analogico' o 'digital'
+ * @param {string} payload - El valor del comando (ej: '150' o '1').
+ */
+function publishCommand(type, payload) {
+    if (!client || !client.connected) {
+        console.error('No se puede publicar: Cliente MQTT no está conectado.');
+        return false;
+    }
+
+    let topic;
+    // Seleccionar el tópico de destino basado en el tipo de comando
+    switch (type) {
+        case 'analog':
+            topic = TOPIC_CMD_ANALOG;
+            break;
+        case 'digital':
+            topic = TOPIC_CMD_DIGITAL;
+            break;
+        default:
+            console.error(`Tipo de comando desconocido: ${type}`);
+            return false;
+    }
+
+    // Publicar el payload en el tópico seleccionado
+    client.publish(topic, String(payload), { qos: 0, retain: false }, (err) => {
+        if (err) {
+            console.error(`Error al publicar en ${topic}:`, err);
+        } else {
+            console.log(`Comando publicado: ${topic} -> ${payload}`);
+        }
+    });
+    return true;
+}
+
 
 // --- KEY FUNCTIONS EXPORT ---
 export default {
     init,
+    publishCommand,
 };

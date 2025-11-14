@@ -9,6 +9,8 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server); //io = input/output
 
+app.use(express.json());
+
 //statics
 app.use(express.static("public"));
 
