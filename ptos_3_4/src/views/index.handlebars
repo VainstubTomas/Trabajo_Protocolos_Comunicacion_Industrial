@@ -23,18 +23,26 @@
         <h2 class="display-2">Display I/O values from device Nº1</h2>
 
         <div class="io-data">
-            <p>Temperature: <span id="currentTemperature">--</span> °C</p>
+            <p><b>Pot:</b> <span id="currentPot">--</span></p>
         </div>
         <div class="io-data">
-            <p>Distance: <span id="currentDistance">--</span> cm</p>
+            <p><b>Distance:</b> <span id="currentDistance">--</span> cm</p>
+        </div>
+        <div class="io-data">
+            <p><b>Boton 1:</b> <span id="currentBoton1">--</span></p>
+        </div>
+        <div class="io-data">
+            <p><b>Boton 2:</b> <span id="currentBoton2">--</span></p>
         </div>
     </section>
 
     <section id="communicationsStatus">
         <h2 class="display-2">Communications states</h2>
+        {{!-- en esclavo y maestro --}}
         <div id="modbusStatus">
             <p>Modbus state: <span id="modbusState" style="color: rgb(185, 185, 0);">DEVICE NOT REACHED</span></p>
         </div>
+        {{!-- cliente y servidor --}}
         <div id="opcStatus">
             <p>OPC state: <span id="opcState" style="color: red";>ERROR</span></p>
         </div>
@@ -56,11 +64,13 @@
     const socket = io();
 
     //DOM
-    const temp = document.getElementById("currentTemperature");
+    const boton1 = document.getElementById("currentBoton1");
+    const boton2 = document.getElementById("currentBoton2");
+    const pot = document.getElementById("currentPot");
     const dist = document.getElementById("currentDistance");
     const mqttStateSpan = document.getElementById('mqttState');
     const modbusStateSpan = document.getElementById('modbusState');
-    const opctateSpan = document.getElementById('opcState');
+    const opcStateSpan = document.getElementById('opcState');
     //publicadores al broker
     const digitalButton = document.getElementById('digitalControl');
     const analogForm = document.getElementById('analogControl');
@@ -114,11 +124,17 @@
 
         // upload HTML elements
         switch (topic) {
-            case 'pci/sensor/temp':
-                temp.textContent = payload;
+            case 'pci/sensor/pot':
+                pot.textContent = payload;
                 break;
             case 'pci/sensor/distancia':
                 dist.textContent = payload;
+                break;
+            case 'pci/datos/boton_1':
+                boton1.textContent = payload;
+                break;
+            case 'pci/datos/boton_2':
+                boton2.textContent = payload;
                 break;
             case 'pci/state/modbus':
                 modbusStateSpan.textContent = payload;
