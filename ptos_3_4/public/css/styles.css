@@ -1,16 +1,80 @@
+body{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: rgba(131, 131, 131, 0.253);
+}
+
+h1{
+    margin-bottom: 50px;
+}
+
 .card{
-    max-width: 600px;
+    max-width: 800px;
+    width: 600px;
+    height: 750px;
+    border-color: rgba(0, 0, 0, 0.089);
 }
 
 .display-1{
-    font-size: 50px;
-    font-weight:400
+    display: flex;
+    justify-content: center;
+    font-size: 45px;
+    font-weight:600;
 }
 
 .display-2{
-    font-size: 40px;
+    display: flex;
+    justify-content: center;
+    font-size: 38px;
+    font-weight: 380;
 }
 
-.form-control{
+#inputsForControl{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 40px;
+}
+
+#digitalControl{
+    margin-bottom: 17px;
+}
+
+#form-control{
     max-width: 300px;
+}
+
+#analogControl{
+    width: 400px;
+}
+
+#analogControl P{
+    font-size: 12px;
+}
+
+#communicationsStatus{
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+#displayInputAndOutputs{
+    padding: 15px 30px 5px 30px;
+    margin-top: 10px;
+    margin-bottom: 40px;
+    display: flex;
+    justify-content: space-between;
+}
+
+#communicationsStatus{
+    padding: 5px 30px 5px 30px;
+    margin-top: 20px;
+}
+
+p{
+    display: flex;
+    justify-content: space-between;
 }

@@ -1,5 +1,5 @@
-<div class="card">
-    <h1 class="display-1">Panel de control industrial</h1>
+<div class="card shadow p-3 mb-5 bg-body-tertiary rounded">
+    <h1 class="display-1">Industrial control panel</h1>
 
     <section>
         <h2 class="display-2">Input controls - LED</h2>
@@ -8,8 +8,9 @@
     
             {{!-- analog ctrl --}}
             <form id="analogControl" class="d-flex gap-2 mb-3"> 
-                <input class="form-control" type="text" id="analogValue" placeholder="Input a new analog value [0 - 100]" required>
+                <input class="form-control" type="text" id="analogValue" placeholder="Input a new analog value" required>
                 <button class="btn btn-dark" type="submit">Send</button>
+                <p>MIN: 0 MAX:100</p>
             </form>
             
             {{!-- digital ctrl --}}
@@ -19,8 +20,10 @@
 
     </section>
 
+    <h2 class="display-2">Display I/O values</h2>
+
     <section id="displayInputAndOutputs">
-        <h2 class="display-2">Display I/O values from device Nº1</h2>
+        
 
         <div class="io-data">
             <p><b>Pot:</b> <span id="currentPot">--</span></p>
@@ -36,18 +39,29 @@
         </div>
     </section>
 
+    <h2 class="display-2">Communications states</h2>
+
     <section id="communicationsStatus">
-        <h2 class="display-2">Communications states</h2>
+        
         {{!-- en esclavo y maestro --}}
         <div id="modbusStatus">
-            <p>Modbus state: <span id="modbusState" style="color: rgb(185, 185, 0);">DEVICE NOT REACHED</span></p>
+            <p>
+                <b>Modbus state:</b> 
+                <span id="modbusState" style="color: rgb(185, 185, 0);">DEVICE NOT REACHED</span>
+            </p>
         </div>
         {{!-- cliente y servidor --}}
         <div id="opcStatus">
-            <p>OPC state: <span id="opcState" style="color: red";>ERROR</span></p>
+            <p>
+                <b>OPC state:</b> 
+                <span id="opcState" style="color: red";>ERROR</span>
+            </p>
         </div>
         <div id="mqttStatus">
-            <p>MQTT state: <span id="mqttState">CONNECTED</span></p>
+            <p>
+                <b>MQTT state:</b> 
+                <span id="mqttState">CONNECTED</span>
+            </p>
         </div>
     </section>
 {{!-- 
