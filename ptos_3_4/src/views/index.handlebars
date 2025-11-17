@@ -9,8 +9,7 @@
             {{!-- analog ctrl --}}
             <form id="analogControl" class="d-flex gap-2 mb-3"> 
                 <input class="form-control" type="text" id="analogValue" placeholder="Input a new analog value" required>
-                <button class="btn btn-dark" type="submit">Send</button>
-                <p>MIN: 0 MAX:100</p>
+                <button id="analogButton" class="btn btn-dark" type="submit">Send</button>
             </form>
             
             {{!-- digital ctrl --}}
@@ -44,17 +43,39 @@
     <section id="communicationsStatus">
         
         {{!-- en esclavo y maestro --}}
-        <div id="modbusStatus">
+        <div id="modbusSlaveStatus">
             <p>
-                <b>Modbus state:</b> 
-                <span id="modbusState" style="color: rgb(185, 185, 0);">DEVICE NOT REACHED</span>
+                <b>Modbus Slave state:</b> 
+                <span id="modbusSlaveState" style="color: rgb(185, 185, 0);">DEVICE NOT REACHED</span>
             </p>
         </div>
-        {{!-- cliente y servidor --}}
-        <div id="opcStatus">
+        <div id="modbusMasterStatus">
             <p>
-                <b>OPC state:</b> 
-                <span id="opcState" style="color: red";>ERROR</span>
+                <b>Modbus Master state:</b>
+                <span id="modbusMasterState" style="color: rgb(185, 185, 0);">DEVICE NOT REACHED</span>
+            </p>
+        </div>
+
+        <div id="modbusEstadistica">
+            <p>
+                <b>Modbus statistics (A/CRC/E):</b>
+                <span id="modbusEstadisticaAceptado">--</span>
+                <span id="modbusEstadisticaCRC">--</span>
+                <span id="modbusEstadisticaNoAlcanzado">--</span>
+            </p>
+        </div>
+
+        {{!-- cliente y servidor --}}
+        <div id="opcServerStatus">
+            <p>
+                <b>OPC Server state:</b> 
+                <span id="opcServerState" style="color: red";>ERROR</span>
+            </p>
+        </div>
+        <div id="opcClientStatus">
+            <p>
+                <b>OPC Client state:</b> 
+                <span id="opcClientState" style="color: red";>ERROR</span>
             </p>
         </div>
         <div id="mqttStatus">
@@ -78,13 +99,20 @@
     const socket = io();
 
     //DOM
+    const modbusAceptada = document.getElementById("modbusEstadisticaAceptado");
+    const modbusCRC = document.getElementById("modbusEstadisticaCRC");
+    const modbusNoAlcanzada= document.getElementById("modbusEstadisticaNoAlcanzado");
+    const botonAnalogico = document.getElementById("analogButton");
+    const botonLED = document.getElementById("digitalControl");
     const boton1 = document.getElementById("currentBoton1");
     const boton2 = document.getElementById("currentBoton2");
     const pot = document.getElementById("currentPot");
     const dist = document.getElementById("currentDistance");
     const mqttStateSpan = document.getElementById('mqttState');
-    const modbusStateSpan = document.getElementById('modbusState');
-    const opcStateSpan = document.getElementById('opcState');
+    const modbusSlaveStateSpan = document.getElementById('modbusSlaveState');
+    const modbusMasterStateSpan = document.getElementById('modbusMasterState');
+    const opcServerStateSpan = document.getElementById('opcServerState');
+    const opcClientStateSpan = document.getElementById('opcClientState');
     //publicadores al broker
     const digitalButton = document.getElementById('digitalControl');
     const analogForm = document.getElementById('analogControl');
@@ -150,29 +178,58 @@
             case 'pci/datos/boton_2':
                 boton2.textContent = payload;
                 break;
-            case 'pci/state/modbus':
-                modbusStateSpan.textContent = payload;
-                if (payload == 'DONE') {
-                    modbusStateSpan.style.color = 'green'; 
-                } else if (payload == 'DEVICE NOT REACHED'){
-                    modbusStateSpan.style.color = 'yellow';
-                } else {
-                    modbusStateSpan.style.color = 'red';
+            //ESTADISTICA
+            case 'pci/estadistica/modbus_aceptadas':
+                modbusAceptada.textContent = payload;
+                break;
+            case 'pci/estadistica/modbus_crc_error':
+                modbusCRC.textContent = payload;
+                break;
+            case 'pci/estadistica/modbus_no_alcanzado':
+                modbusNoAlcanzada.textContent = payload;
+                break;
+            //ESTADISTICA
+            case 'pci/state/modbus_esclavo':
+                modbusSlaveStateSpan.textContent = payload;
+                if (payload == 'OK') {
+                    modbusSlaveStateSpan.style.color = 'green'; 
+                } else if (payload == 'ERROR_TIMEOUT'){
+                    modbusSlaveStateSpan.style.color = 'red';
+                } else if(payload == 'ERROR_DESCONECTADO'){
+                    modbusSlaveStateSpan.style.color = 'red';
+                }else {
+                    modbusSlaveStateSpan.style.color = 'yellow';
                 }
                 break;
-            case 'pci/state/opc':
-                opctateSpan.textContent = payload;
-                if (payload === 'ERROR') {
-                    opcStateSpan.style.color = 'red'; 
+            case 'pci/state/modbus_maestro':
+                modbusMasterStateSpan.textContent = payload;
+                if (payload == 'RUNNING') {
+                    modbusMasterStateSpan.style.color = 'green'; 
+                } else if (payload == 'DEVICE NOT REACHED'){
+                    modbusMasterStateSpan.style.color = 'yellow';
                 } else {
-                    opcStateSpan.style.color = 'green';
+                    modbusMasterStateSpan.style.color = 'red';
+                }
+                break;
+            case 'pci/state/opc_server':
+                opcServerStateSpan.textContent = payload;
+                if (payload === 'CRASHED') {
+                    opcServerStateSpan.style.color = 'red'; 
+                } else {
+                    opcServerStateSpan.style.color = 'green';
+                }
+                break;
+            case 'pci/state/opc_cliente':
+                opcClientStateSpan.textContent = payload;
+                if (payload === 'CRASHED') {
+                    opcClientStateSpan.style.color = 'red'; 
+                } else {
+                    opcClientStateSpan.style.color = 'green';
                 }
                 break;
             case 'pci/value1/analog':
-                NombreDOM_Referencia.textContent = payload;
                 break;
             case 'pci/value1/dig':
-                NombreDOM_Referencia.textContent = payload;
                 break;
             default:
                 console.log(`[CLIENT] Tópico recibido no mapeado: ${topic}`);
