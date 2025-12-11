@@ -1,0 +1,11 @@
+{
+    "estado": "OK",
+    "timestamp_lectura": 1763553928,
+    "potenciometro": 788,
+    "ultrasonido": 48,
+    "boton_1": 0,
+    "boton_2": 0,
+    "stats_aceptadas": 24,
+    "stats_crc": 0,
+    "stats_no_alcanzado": 18
+}

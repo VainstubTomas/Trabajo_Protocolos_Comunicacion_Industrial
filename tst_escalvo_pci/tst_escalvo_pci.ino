@@ -14,7 +14,12 @@ DHT dht(DHTPIN, DHTTYPE);
 // def LEDs
 #define LED_ROJO 22
 #define LED_VERDE 21
-#define LED_AMARILLO 18
+#define LED_ALERTA_ROJA_TEMP 12 
+#define LED_ALERTA_AZUL_TEMP 14
+
+// UMBRALES DE ALERTA DE TEMPERATURA
+#define UMBRAL_ALTO 30.0
+#define UMBRAL_BAJO 26.7
 
 PubSubClient client(espClient);
 long lastMsg = 0;
@@ -72,12 +77,14 @@ void setup() {
   //leds (Pines digitales para Rojo y Verde)
   pinMode(LED_ROJO, OUTPUT);
   pinMode(LED_VERDE, OUTPUT);
-  pinMode(LED_AMARILLO, OUTPUT);
+  pinMode(LED_ALERTA_ROJA_TEMP, OUTPUT);
+  pinMode(LED_ALERTA_AZUL_TEMP, OUTPUT);
   
   // Estado inicial leds
   digitalWrite(LED_ROJO, HIGH);// Rojo encendido por default (indicando no conectado)
   digitalWrite(LED_VERDE, LOW);// Verde apagado
-  digitalWrite(LED_VERDE, LOW);// Amarillo apagado
+  digitalWrite(LED_ALERTA_AZUL_TEMP, LOW);
+  digitalWrite(LED_ALERTA_ROJA_TEMP, LOW);
 }
 
 void setup_wifi(){
@@ -110,30 +117,6 @@ void callback(char* topic, byte* message, unsigned int length){
     messageTemp += (char)message[i];
    }
   Serial.println();
-  
-  // ------------------------------------------
-  // LÓGICA DE CONTROL: Tópicos de Suscripción
-  // ------------------------------------------
-
-  // 1. Verificar si el tópico recibido es el de control DIGITAL
-  if (String(topic) == "pci/value1/dig") {
-    Serial.print("Comando de LED digital recibido: ");
-    Serial.println(messageTemp);
-    
-    // Comprobar si el mensaje es '1' (Encender)
-    if (messageTemp == "1") {
-      digitalWrite(LED_AMARILLO, HIGH); // <--- ¡INCORRECTO! USAR LEDC
-      Serial.println("-> LED AMARILLO ENCENDIDO");
-    } 
-    // Comprobar si el mensaje es '0' (Apagar)
-    else if (messageTemp == "0") {
-      digitalWrite(LED_AMARILLO, LOW); // <--- ¡INCORRECTO! USAR LEDC
-      Serial.println("-> LED AMARILLO APAGADO");
-    }
-    else {
-      Serial.println("-> Valor no válido recibido para el control digital.");
-    }
-  } 
 }
 
 // realiza la reconexiòn en caso de fallo
@@ -148,9 +131,9 @@ void reconnect (){
       digitalWrite(LED_ROJO, LOW);  
       digitalWrite(LED_VERDE, HIGH);  
       
-      client.subscribe ("pci/sensor/temp");
-      client.subscribe("pci/value1/dig");
-      client.subscribe("pci/value1/analog");
+      //client.subscribe ("pci/sensor/temp");
+      //client.subscribe("pci/value1/dig");
+      //client.subscribe("pci/value1/analog");
       } else {
         Serial.print ("fallo, rc=");
         Serial.print (client.state());
@@ -178,7 +161,7 @@ void loop() {
     
       // Leer temperatura y humedad desde el DHT11
     float Temperatura = dht.readTemperature();
-    //float Humedad = dht.readHumidity();
+    float Humedad = dht.readHumidity();
     
       // Verificar si la lectura es válida
     if (isnan(Temperatura)|| isnan(Humedad)) {
@@ -186,21 +169,40 @@ void loop() {
       return;
     }
 
+     // ------------------------------------------
+    // LÓGICA DE CONTROL DE LEDS DE ALERTA (NUEVO)
+    // ------------------------------------------
+      if (Temperatura >= UMBRAL_ALTO) {
+          // Alerta ROJA (Temperatura Alta)
+          digitalWrite(LED_ALERTA_ROJA_TEMP, HIGH);
+          digitalWrite(LED_ALERTA_AZUL_TEMP, LOW);
+          Serial.println(">>> ALERTA ROJA: TEMPERATURA ALTA");
+      } else if (Temperatura <= UMBRAL_BAJO) {
+          // Alerta AZUL (Temperatura Baja)
+          digitalWrite(LED_ALERTA_ROJA_TEMP, LOW);
+          digitalWrite(LED_ALERTA_AZUL_TEMP, HIGH);
+          Serial.println(">>> ALERTA AZUL: TEMPERATURA BAJA");
+      } else {
+          // Rango normal: ambos apagados
+          digitalWrite(LED_ALERTA_ROJA_TEMP, LOW);
+          digitalWrite(LED_ALERTA_AZUL_TEMP, LOW);
+      }
+
       // Mostrar en el monitor serial
     Serial.print("Temperatura: ");
     Serial.print(Temperatura);
-    Serial.print(" °C");
-    //Serial.print(Humedad);
-    //Serial.println(" %");
+    Serial.print(" °C  |  Humedad: ");
+    Serial.print(Humedad);
+    Serial.println(" %");
 
     //publicamos temperatura
     char tempString[8];
     dtostrf(Temperatura, 1, 2, tempString);
-    client.publish("pci/sensor/temp", tempString);
+    client.publish("ic/sensor/temp", tempString);
     
-    // Publicar humedad
-    //char humString[8];
-    //dtostrf(Humedad, 1, 2, humString);
-    //client.publish("esp32/humedad", humString);
+    //Publicar humedad
+    char humString[8];
+    dtostrf(Humedad, 1, 2, humString);
+    client.publish("ic/sensor/humedad", humString);
   }
 }
